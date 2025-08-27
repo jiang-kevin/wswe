@@ -21,6 +21,8 @@ SessionDep = Annotated[Session, Depends(db.session)]
 origins = [
     "http://localhost",
     "http://localhost:5173",
+    "http://127.0.0.1",
+    "http://127.0.0.1:5173",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -32,8 +34,9 @@ app.add_middleware(
 
 
 @app.get("/restaurants")
-async def get_restaurants(session: SessionDep):
-    return session.exec(select(Restaurant)).all()
+async def get_restaurants(session: SessionDep) -> list[Restaurant]:
+    restaurants = list(session.exec(select(Restaurant)).all())
+    return restaurants
 
 @app.get("/restaurants/{id}")
 async def get_restaurant_by_id(restaurant_id: int, session: SessionDep):
