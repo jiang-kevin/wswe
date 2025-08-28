@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Sequence
 
-from fastapi import FastAPI, Depends, Form
+from fastapi import FastAPI, Depends, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
 from database import Database
-from models import Restaurant, Tag
+from models import Restaurant, RestaurantCreate, RestaurantPublicWithTags, Tag, TagBase, TagCreate, TagPublic
 
 db = Database()
 
@@ -33,29 +33,43 @@ app.add_middleware(
 )
 
 
-@app.get("/restaurants")
-async def get_restaurants(session: SessionDep) -> list[Restaurant]:
-    restaurants = list(session.exec(select(Restaurant)).all())
+@app.get("/restaurants", response_model=list[RestaurantPublicWithTags])
+async def get_restaurants(session: SessionDep, offset: int = 0, limit: int = Query(default=100, le=100)):
+    restaurants = session.exec(select(Restaurant).offset(offset).limit(limit)).all()
     return restaurants
 
 @app.get("/restaurants/{id}")
-async def get_restaurant_by_id(restaurant_id: int, session: SessionDep):
-    return session.get(Restaurant, restaurant_id)
+async def get_restaurant_by_id(restaurant_id: int, session: SessionDep) -> Restaurant:
+    restaurant = session.get(Restaurant, restaurant_id)
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found.")
+    return restaurant
 
 @app.post("/restaurants")
-async def create_restaurant(restaurant: Annotated[Restaurant, Form()], session: SessionDep):
-    session.add(restaurant)
+async def create_restaurant(restaurant: Annotated[RestaurantCreate, Form()], session: SessionDep) -> Restaurant:
+    db_tags = session.exec(select(Tag).where(Tag.id in restaurant.tag_ids)).all()
+    db_restaurant = Restaurant.model_validate(restaurant)
+    db_restaurant.tags = list(db_tags)
+    session.add(db_restaurant)
     session.commit()
+    session.refresh(db_restaurant)
+    return db_restaurant
 
 @app.get("/tags")
-async def get_tags(session: SessionDep):
-    return session.exec(select(Tag)).all()
+async def get_tags(session: SessionDep, offset: int = 0, limit: int = Query(default=100, le=100)) -> Sequence[Tag]:
+    return session.exec(select(Tag).offset(offset).limit(limit)).all()
 
 @app.get("/tags/{id}")
-async def get_tag_by_id(tag_id: int, session: SessionDep):
-    return session.get(Tag, tag_id)
+async def get_tag_by_id(tag_id: int, session: SessionDep) -> Tag:
+    tag = session.get(Tag, tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found.")
+    return tag
 
 @app.post("/tags")
-async def create_tag(tag: Annotated[Tag, Form()], session: SessionDep):
+async def create_tag(tag: Annotated[TagCreate, Form()], session: SessionDep) -> Tag:
+    db_tag = Tag.model_validate(tag)
     session.add(tag)
     session.commit()
+    session.refresh(db_tag)
+    return db_tag
