@@ -5,7 +5,5 @@
 </script>
 
 <div>
-    {#each data.restaurants as r}
-        <p>{r.name}</p>
-    {/each}
+Hello world!
 </div>

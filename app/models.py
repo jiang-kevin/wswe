@@ -16,7 +16,7 @@ class Restaurant(RestaurantBase, table=True):
     tags: list["Tag"] = Relationship(back_populates="restaurants", link_model=RestaurantTagLink)
 
 class RestaurantCreate(RestaurantBase):
-    tag_ids: list[int]
+    tag_ids: list[int] = []
 
 class RestaurantPublic(RestaurantBase):
     id: int

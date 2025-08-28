@@ -46,7 +46,7 @@ async def get_restaurant_by_id(restaurant_id: int, session: SessionDep) -> Resta
     return restaurant
 
 @app.post("/restaurants")
-async def create_restaurant(restaurant: Annotated[RestaurantCreate, Form()], session: SessionDep) -> Restaurant:
+async def create_restaurant(restaurant: RestaurantCreate, session: SessionDep) -> Restaurant:
     db_tags = session.exec(select(Tag).where(Tag.id in restaurant.tag_ids)).all()
     db_restaurant = Restaurant.model_validate(restaurant)
     db_restaurant.tags = list(db_tags)
